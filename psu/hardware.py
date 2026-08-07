@@ -89,6 +89,11 @@ class PowerSupply(ABC):
     ) -> None: ...
 
     @abstractmethod
+    async def set_power(self, watts: float) -> None:
+        """Write the power setpoint (reg 502) as absolute watts."""
+        ...
+
+    @abstractmethod
     async def enable_remote(self, enabled: bool = True) -> None:
         """Take / release remote control of the device."""
         ...
@@ -192,6 +197,16 @@ class MockPowerSupply(PowerSupply):
         if current_a is not None:
             await self.set_current(current_a)
 
+    async def set_power(self, watts: float) -> None:
+        if not self._connected:
+            raise RuntimeError("not connected")
+        p_nom = self._nominals.power_w
+        pct = (watts / p_nom) * 100.0
+        # Cap voltage/current targets so power is achievable
+        self._target_voltage_pct = 100.0
+        self._target_current_pct = max(0.0, min(100.0, pct))
+        log.info(f"Mock set power → {watts:.1f} W ({pct:.2f} % of {p_nom:.0f} W)")
+
     async def read(self) -> PsuReading:
         if not self._connected:
             raise RuntimeError("not connected")
@@ -216,9 +231,7 @@ class MockPowerSupply(PowerSupply):
             power_w=round(p, 1),
             voltage_pct=round(self._voltage_pct, 2),
             current_pct=round(self._current_pct, 2),
-            power_pct=round(
-                p / self._nominals.power_w * 100.0 if self._nominals.power_w else 0.0, 2
-            ),
+            power_pct=round(p / self._nominals.power_w * 100.0, 2),
             target_voltage_v=round(tu, 2),
             target_current_a=round(ti, 2),
             target_voltage_pct=round(self._target_voltage_pct, 2),
@@ -276,6 +289,7 @@ class EaPsPowerSupply(PowerSupply):
     REG_OUTPUT = 405  # coil: DC terminal on/off
     REG_U_SET = 500
     REG_I_SET = 501
+    REG_P_SET = 502  # power setpoint (percent of P_nom)
     REG_STATUS = 505  # 32-bit device state
     REG_ACTUALS = 507
 
@@ -411,6 +425,17 @@ class EaPsPowerSupply(PowerSupply):
         if current_a is not None:
             await self.set_current(current_a)
 
+    async def set_power(self, watts: float) -> None:
+        if self._nominals is None:
+            raise RuntimeError("nominals not available")
+        p_nom = self._nominals.power_w
+        if p_nom <= 0:
+            raise RuntimeError("invalid nominal power")
+        pct = (watts / p_nom) * 100.0
+        raw = _percent_to_raw(pct)
+        await self._write_register(self.REG_P_SET, raw)
+        log.info(f"Set power → {watts:.1f} W ({pct:.2f} %, raw={raw})")
+
     async def read(self) -> PsuReading:
         if not self._connected or self._client is None:
             raise RuntimeError("not connected")
@@ -445,7 +470,7 @@ class EaPsPowerSupply(PowerSupply):
 
         u = u_pct / 100.0 * self._nominals.voltage_v
         i = i_pct / 100.0 * self._nominals.current_a
-        p = p_pct / 100.0 * (self._nominals.power_w or (u * i))
+        p = p_pct / 100.0 * self._nominals.power_w
         tu = tu_pct / 100.0 * self._nominals.voltage_v
         ti = ti_pct / 100.0 * self._nominals.current_a
 

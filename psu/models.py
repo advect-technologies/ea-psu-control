@@ -48,7 +48,7 @@ class Nominals:
 
     voltage_v: float
     current_a: float
-    power_w: float | None = None
+    power_w: float
     serial_number: str | None = None
 
 

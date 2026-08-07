@@ -6,7 +6,11 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.14.3",
+    "daq-tools",
     "loguru>=0.7.3",
     "pymodbus>=3.14.0",
     "pyserial>=3.5",
 ]
+
+[tool.uv.sources]
+daq-tools = { git = "https://github.com/advect-technologies/daq-tools.git" }
