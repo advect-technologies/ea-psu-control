@@ -276,7 +276,7 @@ INDEX_HTML = """<!DOCTYPE html>
       <h2>Power</h2>
       <div class="value-row">
         <span><span class="value" id="p-act">—</span><span class="unit">W</span></span>
-        <span class="target" id="p-pct">— %</span>
+        <span class="target">set <span id="p-tgt">—</span> W</span>
       </div>
     </div>
   </div>
@@ -507,7 +507,7 @@ INDEX_HTML = """<!DOCTYPE html>
         $("#i-act").textContent = r.current_a.toFixed(2);
         $("#i-tgt").textContent = r.target_current_a.toFixed(2);
         $("#p-act").textContent = r.power_w.toFixed(1);
-        $("#p-pct").textContent = r.power_pct.toFixed(1) + " %";
+        $("#p-tgt").textContent = r.target_power_w.toFixed(1);
       }
 
       if (s.nominals) {
@@ -704,8 +704,10 @@ def create_app(
                 "power_pct": r.power_pct,
                 "target_voltage_v": r.target_voltage_v,
                 "target_current_a": r.target_current_a,
+                "target_power_w": r.target_power_w,
                 "target_voltage_pct": r.target_voltage_pct,
                 "target_current_pct": r.target_current_pct,
+                "target_power_pct": r.target_power_pct,
                 "timestamp": r.timestamp,
             },
             "status_bitmap": None if bm is None else bm.to_dict(),

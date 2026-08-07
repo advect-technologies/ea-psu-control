@@ -71,8 +71,10 @@ class PsuReading:
     # Setpoints (targets)
     target_voltage_v: float
     target_current_a: float
+    target_power_w: float
     target_voltage_pct: float
     target_current_pct: float
+    target_power_pct: float
 
     timestamp: float  # time.monotonic()
 

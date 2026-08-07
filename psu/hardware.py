@@ -133,6 +133,7 @@ class MockPowerSupply(PowerSupply):
         self._current_pct = 0.0
         self._target_voltage_pct = 0.0
         self._target_current_pct = 0.0
+        self._target_power_pct = 0.0
         self._remote_active = False
         self._output_on = False
         self._last_reading: PsuReading | None = None
@@ -201,10 +202,10 @@ class MockPowerSupply(PowerSupply):
         if not self._connected:
             raise RuntimeError("not connected")
         p_nom = self._nominals.power_w
-        pct = (watts / p_nom) * 100.0
-        # Cap voltage/current targets so power is achievable
-        self._target_voltage_pct = 100.0
-        self._target_current_pct = max(0.0, min(100.0, pct))
+        pct = (watts / p_nom) * 100.0 if p_nom else 0.0
+        # Keep U/I limits as the user set them (matches real hardware).
+        # Only the independent power setpoint moves.
+        self._target_power_pct = max(0.0, min(100.0, pct))
         log.info(f"Mock set power → {watts:.1f} W ({pct:.2f} % of {p_nom:.0f} W)")
 
     async def read(self) -> PsuReading:
@@ -220,10 +221,14 @@ class MockPowerSupply(PowerSupply):
 
         u = self._voltage_pct / 100.0 * self._nominals.voltage_v
         i = self._current_pct / 100.0 * self._nominals.current_a
-        p = u * i
+        # Actual power is limited by U*I and the power setpoint
+        p_ui = u * i
+        p_lim = self._target_power_pct / 100.0 * self._nominals.power_w
+        p = min(p_ui, p_lim) if self._output_on else p_ui * 0.0
 
         tu = self._target_voltage_pct / 100.0 * self._nominals.voltage_v
         ti = self._target_current_pct / 100.0 * self._nominals.current_a
+        tp = self._target_power_pct / 100.0 * self._nominals.power_w
 
         reading = PsuReading(
             voltage_v=round(u, 2),
@@ -234,8 +239,10 @@ class MockPowerSupply(PowerSupply):
             power_pct=round(p / self._nominals.power_w * 100.0, 2),
             target_voltage_v=round(tu, 2),
             target_current_a=round(ti, 2),
+            target_power_w=round(tp, 1),
             target_voltage_pct=round(self._target_voltage_pct, 2),
             target_current_pct=round(self._target_current_pct, 2),
+            target_power_pct=round(self._target_power_pct, 2),
             timestamp=time.monotonic(),
         )
         self._last_reading = reading
@@ -451,9 +458,10 @@ class EaPsPowerSupply(PowerSupply):
             self._last_error = str(rr_act)
             raise RuntimeError(f"Modbus read error (actuals): {rr_act}")
 
+        # 500=U_set, 501=I_set, 502=P_set
         rr_set = await self._client.read_holding_registers(
             address=self.REG_U_SET,
-            count=2,
+            count=3,
             device_id=self._cfg.device_id,
         )
         if rr_set.isError():
@@ -467,12 +475,14 @@ class EaPsPowerSupply(PowerSupply):
         p_pct = _raw_to_percent(rr_act.registers[2])
         tu_pct = _raw_to_percent(rr_set.registers[0])
         ti_pct = _raw_to_percent(rr_set.registers[1])
+        tp_pct = _raw_to_percent(rr_set.registers[2])
 
         u = u_pct / 100.0 * self._nominals.voltage_v
         i = i_pct / 100.0 * self._nominals.current_a
         p = p_pct / 100.0 * self._nominals.power_w
         tu = tu_pct / 100.0 * self._nominals.voltage_v
         ti = ti_pct / 100.0 * self._nominals.current_a
+        tp = tp_pct / 100.0 * self._nominals.power_w
 
         reading = PsuReading(
             voltage_v=round(u, 2),
@@ -483,8 +493,10 @@ class EaPsPowerSupply(PowerSupply):
             power_pct=round(p_pct, 2),
             target_voltage_v=round(tu, 2),
             target_current_a=round(ti, 2),
+            target_power_w=round(tp, 1),
             target_voltage_pct=round(tu_pct, 2),
             target_current_pct=round(ti_pct, 2),
+            target_power_pct=round(tp_pct, 2),
             timestamp=time.monotonic(),
         )
         self._last_reading = reading

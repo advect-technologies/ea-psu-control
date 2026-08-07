@@ -45,6 +45,7 @@ def _reading_to_datapoint(
         "power_w": reading.power_w,
         "target_voltage_v": reading.target_voltage_v,
         "target_current_a": reading.target_current_a,
+        "target_power_w": reading.target_power_w,
         "remote": int(status.remote_active),
         "output": int(status.output_on),
     }
@@ -132,9 +133,7 @@ class TelemetryWriter:
             except Exception as e:
                 log.warning(f"Telemetry flush error: {e}")
 
-    async def _flush_available(
-        self,
-    ) -> None:
+    async def _flush_available(self) -> None:
         batch = []
         while len(batch) < self._cfg.max_batch_size and not self._queue.empty():
             batch.append(self._queue.get_nowait())

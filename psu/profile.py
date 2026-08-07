@@ -311,6 +311,7 @@ class ProfilePlayer:
         scale_w = power_scale_kw * 1000.0
         t0 = time.monotonic()
         last_idx = -1
+        first_write = True
         try:
             # Ensure remote is on so setpoints take effect
             st = self._psu.status()
@@ -351,6 +352,11 @@ class ProfilePlayer:
                         f"norm={pt.normalized:.4f}  P={power_w:.1f} W"
                     )
 
+                    if first_write:
+                        await asyncio.sleep(0.1)
+                        first_write = False
+                        await self._psu.enable_output(True)
+
                 self._state.elapsed_s = elapsed
                 self._state.index = idx
                 self._state.normalized = pt.normalized
@@ -372,3 +378,5 @@ class ProfilePlayer:
         finally:
             self._state.active = False
             self._task = None
+            first_write = True
+            await self._psu.enable_output(False)
