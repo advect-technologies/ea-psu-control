@@ -86,6 +86,7 @@ class PowerSupply(ABC):
         self,
         voltage_v: float | None = None,
         current_a: float | None = None,
+        power_w: float | None = None,
     ) -> None: ...
 
     @abstractmethod
@@ -120,22 +121,22 @@ class MockPowerSupply(PowerSupply):
     """In-memory simulator for development."""
 
     def __init__(self, serial: SerialConfig) -> None:
-        self._serial = serial
-        self._connected = False
-        self._serial_number = "MOCK-3321060002"
-        self._nominals = Nominals(
+        self._serial: SerialConfig = serial
+        self._connected: bool = False
+        self._serial_number: str = "MOCK-3321060002"
+        self._nominals: Nominals = Nominals(
             voltage_v=500.0,
             current_a=180.0,
             power_w=30_000.0,
             serial_number=self._serial_number,
         )
-        self._voltage_pct = 0.0
-        self._current_pct = 0.0
-        self._target_voltage_pct = 0.0
-        self._target_current_pct = 0.0
-        self._target_power_pct = 0.0
-        self._remote_active = False
-        self._output_on = False
+        self._voltage_pct: float = 0.0
+        self._current_pct: float = 0.0
+        self._target_voltage_pct: float = 0.0
+        self._target_current_pct: float = 0.0
+        self._target_power_pct: float = 0.0
+        self._remote_active: bool = False
+        self._output_on: bool = False
         self._last_reading: PsuReading | None = None
         self._last_error: str | None = None
         self._status_bitmap: StatusBitmap | None = None
@@ -192,11 +193,14 @@ class MockPowerSupply(PowerSupply):
         self,
         voltage_v: float | None = None,
         current_a: float | None = None,
+        power_w: float | None = None,
     ) -> None:
         if voltage_v is not None:
             await self.set_voltage(voltage_v)
         if current_a is not None:
             await self.set_current(current_a)
+        if power_w is not None:
+            await self.set_power(power_w)
 
     async def set_power(self, watts: float) -> None:
         if not self._connected:
@@ -426,11 +430,14 @@ class EaPsPowerSupply(PowerSupply):
         self,
         voltage_v: float | None = None,
         current_a: float | None = None,
+        power_w: float | None = None,
     ) -> None:
         if voltage_v is not None:
             await self.set_voltage(voltage_v)
         if current_a is not None:
             await self.set_current(current_a)
+        if power_w is not None:
+            await self.set_power(power_w)
 
     async def set_power(self, watts: float) -> None:
         if self._nominals is None:

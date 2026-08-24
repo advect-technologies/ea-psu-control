@@ -10,4 +10,9 @@ wheels/
 .venv
 
 .python-version
-config/psu.toml
+config/
+
+ingest/
+storage-data/
+transient-data/
+profiles/

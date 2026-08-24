@@ -54,6 +54,9 @@ def _reading_to_datapoint(
         ps = player.state()
         if ps.active and ps.profile_name:
             tags["profile"] = ps.profile_name
+            if ps.run_id:
+                tags["run_id"] = ps.run_id
+
             fields["profile_norm"] = ps.normalized
             fields["profile_power_w"] = ps.power_w
 

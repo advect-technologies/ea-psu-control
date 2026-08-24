@@ -9,8 +9,6 @@ Playback is wall-clock based on relative seconds so the player does not
 drift if a step takes longer than the sample interval.
 """
 
-from __future__ import annotations
-
 import asyncio
 import csv
 import re
@@ -80,6 +78,7 @@ class PlayerState:
 
     active: bool = False
     profile_name: str | None = None
+    run_id: str | None = None
     power_scale_kw: float = 0.0
     index: int = 0
     n_points: int = 0
@@ -93,6 +92,7 @@ class PlayerState:
         return {
             "active": self.active,
             "profile_name": self.profile_name,
+            "run_id": self.run_id,
             "power_scale_kw": self.power_scale_kw,
             "index": self.index,
             "n_points": self.n_points,
@@ -276,6 +276,7 @@ class ProfilePlayer:
                 power_scale_kw=power_scale_kw,
                 n_points=profile.n_points,
                 duration_s=profile.duration_s,
+                run_id=f"run_{time.time():.0f}",
             )
             self._task = asyncio.create_task(
                 self._run(profile, power_scale_kw),
@@ -305,6 +306,7 @@ class ProfilePlayer:
             self._task = None
             self._state.active = False
             self._state.error = None
+            self._state.run_id = None
             log.info("Profile stopped")
 
     async def _run(self, profile: Profile, power_scale_kw: float) -> None:

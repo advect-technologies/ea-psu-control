@@ -298,6 +298,8 @@ INDEX_HTML = """<!DOCTYPE html>
         <input type="number" id="set-u" step="0.1" min="0" placeholder="V">
         <label for="set-i">Current</label>
         <input type="number" id="set-i" step="0.01" min="0" placeholder="A">
+        <label for="set-p">Power</label>
+        <input type="number" id="set-p" step="1" min="0" placeholder="W">
         <div class="form-actions">
           <button class="btn-set" id="apply-set">Apply</button>
         </div>
@@ -457,6 +459,7 @@ INDEX_HTML = """<!DOCTYPE html>
       $("#output-off").disabled = !enabled;
       $("#set-u").disabled = !enabled;
       $("#set-i").disabled = !enabled;
+      $("#set-p").disabled = !enabled;
       $("#apply-set").disabled = !enabled;
       $("#profile-start").disabled = !enabled;
       $("#profile-select").disabled = !enabled;
@@ -531,6 +534,7 @@ INDEX_HTML = """<!DOCTYPE html>
         $("#output-off").disabled = !s.output_on;
         $("#set-u").disabled = false;
         $("#set-i").disabled = false;
+        $("#set-p").disabled = false;
         $("#apply-set").disabled = false;
         $("#profile-start").disabled = false;
         $("#profile-select").disabled = false;
@@ -596,11 +600,13 @@ INDEX_HTML = """<!DOCTYPE html>
       if (profileRunning) { toast("Stop profile first"); return; }
       const u = parseFloat($("#set-u").value);
       const i = parseFloat($("#set-i").value);
+      const p = parseFloat($("#set-p").value);
       const body = {};
       if (!Number.isNaN(u)) body.voltage_v = u;
       if (!Number.isNaN(i)) body.current_a = i;
-      if (body.voltage_v == null && body.current_a == null) {
-        toast("Enter voltage and/or current");
+      if (!Number.isNaN(p)) body.power_w = p;
+      if (body.voltage_v == null && body.current_a == null && body.power_w == null) {
+        toast("Enter voltage, current, and/or power");
         return;
       }
       post("/api/setpoints", body, "Setpoints applied");
@@ -749,10 +755,12 @@ def create_app(
         body = await request.json()
         voltage_v = body.get("voltage_v")
         current_a = body.get("current_a")
+        power_w = body.get("power_w")
         try:
             await psu.set_targets(
                 voltage_v=float(voltage_v) if voltage_v is not None else None,
                 current_a=float(current_a) if current_a is not None else None,
+                power_w=float(power_w) if power_w is not None else None,
             )
             return web.json_response({"ok": True})
         except Exception as e:

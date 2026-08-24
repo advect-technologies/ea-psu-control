@@ -14,3 +14,11 @@ dependencies = [
 
 [tool.uv.sources]
 daq-tools = { git = "https://github.com/advect-technologies/daq-tools.git" }
+
+[tool.pyright]
+typeCheckingMode = "standard"
+
+[tool.ruff.lint]
+ignore = [
+    "BLE001",
+]
