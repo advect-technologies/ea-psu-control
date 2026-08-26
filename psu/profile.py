@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from loguru import logger as log
+from pymodbus import ModbusException
 
 from .hardware import PowerSupply
 
@@ -347,7 +348,10 @@ class ProfilePlayer:
 
                 power_w = pt.normalized * scale_w
                 if idx != last_idx:
-                    await self._psu.set_power(power_w)
+                    try:
+                        await self._psu.set_power(power_w)
+                    except ModbusException:
+                        log.warning("Modbus Exception in player")
                     last_idx = idx
                     log.debug(
                         f"Profile step idx={idx} t={elapsed:.1f}s  "
